@@ -1,0 +1,349 @@
+﻿@model List<MyInstagram.Models.Post>
+@using System.Security.Claims
+@{
+    ViewData["Title"] = "Profile";
+    var user = (MyInstagram.Models.User)ViewData["User"];
+    var users = (List<MyInstagram.Models.User>)ViewData["Users"];
+    var allComments = (List<MyInstagram.Models.Comment>)ViewData["Comments"];
+    var actualUserId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+}
+
+<div class="text-center">
+    <h1 class="display-4">Profile of @user.UzivatelskeJmeno</h1>
+    @if (user.Id == actualUserId)
+    {
+        <div style="position: absolute; top: 100px; right: 20px; z-index: 100;">
+            <a class="btn btn-outline-dark btn-sm" asp-area="Identity" asp-page="/Account/Manage/Email" title="Settings">
+                Settings
+            </a>
+        </div>
+    }
+    <div class="mb-3">
+        <h3>@user.Jmeno @user.Prijmeni</h3>
+        @* <p class="text-muted">@user.UserName</p> *@
+    </div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <div class="mx-3">
+            <a href="" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#myModal2">
+                <h5>@(user.Followed?.Count ?? 0)</h5>
+                <p class="text-muted">Followers</p>
+            </a>
+        </div>
+        <div class="mx-3">
+            <a href="" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#myModal3">
+                <h5>@(user.Following?.Count ?? 0)</h5>
+                <p class="text-muted">Following</p>
+            </a>
+        </div>
+    </div>
+    @if (user.Id != actualUserId)
+    {
+        <div>
+            @if (user.Followed == null || !user.Followed.Any(f => f == actualUserId))
+            {
+
+                <form method="post" asp-action="FollowUser">
+                    <input type="hidden" name="userId" value="@user.Id" />
+                    <button type="submit" class="btn btn-secondary btn-sm mb-3">Follow</button>
+                </form>
+            }
+            else
+            {
+
+                <form method="post" asp-action="UnfollowUser">
+                    <input type="hidden" name="userId" value="@user.Id" />
+                    <button type="submit" class="btn btn-danger btn-sm mb-3">Unfollow</button>
+                </form>
+            }
+        </div>
+    }
+
+    <div class="container">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var post in Model)
+            {
+                <div class="card mb-3" style="max-width: 600px; max-height: 600px; margin: auto;">
+                    <h3 class="card-header">@post.User.UzivatelskeJmeno</h3>
+                    <img src="~/Images/@post.ImgPath" class="card-img-top" alt="Image cap" style="max-height: 300px; object-fit: cover;">
+                    <div class="card-body">
+                        <p class="card-text">@post.Text</p>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" asp-action="LikePost" asp-controller="Posts" class="card-link d-inline-block me-2">
+                            <input type="hidden" name="userId" value="@user.Id" />
+                            <input type="hidden" name="postId" value="@post.Id" />
+                            @if (post.Likes != null && post.Likes.Contains(actualUserId))
+                            {
+                                <button type="submit" class="btn btn-outline-danger mb-3">👍 @(post.Likes != null ? post.Likes.Count.ToString() : "0")</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-outline-success mb-3">👍 @(post.Likes != null ? post.Likes.Count.ToString() : "0")</button>
+                            }
+                        </form>
+
+                        <div class="d-inline-block me-2">
+                            <button class="btn btn-secondary mb-3" data-bs-toggle="modal" data-bs-target="#myModal">Likes</button>
+                        </div>
+
+                        <div class="d-inline-block me-2">
+                            <button class="btn btn-secondary mb-3" data-bs-toggle="modal" data-bs-target="#myModal1">Comments</button>
+                        </div>
+                        @if (user.Id == actualUserId)
+                        {
+
+                            <form method="get" asp-action="Edit" asp-controller="Posts" class="d-inline-block me-2">
+                                <input type="hidden" name="id" value="@post.Id" />
+                                @* <input type="hidden" name="userId" value="@user.Id" /> *@
+                                <button type="submit" class="btn btn-outline-info mb-3">Edit</button>
+                            </form>
+                            <form method="post" asp-action="Delete" asp-controller="Posts" class="d-inline-block me-2">
+                                <input type="hidden" name="id" value="@post.Id" />
+                                <input type="hidden" name="userId" value="@user.Id" />
+                                <button type="submit" class="btn btn-outline-danger mb-3">Delete</button>
+                            </form>
+
+                            @* <div class="d-inline-block me-2">
+                                <button asp-action="Edit" asp-controller="Post" asp-route-id="@post.Id" class="btn btn-outline-info mb-3">Edit</button>
+                            </div> *@
+                            @* <div class="d-inline-block me-2">
+                                <button asp-action="Delete" asp-controller="Post" asp-route-id="@post.Id" class="btn btn-outline-danger mb-3">Delete</button>
+                            </div> *@
+
+                        }
+                    </div>
+
+                    <div class="card-footer text-muted">
+                        @post.Date
+                    </div>
+                </div>
+
+                <!-- Modální okno na Liky-->
+                <div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalTitle">People which likes this post</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (post.Likes != null && post.Likes.Any())
+                                {
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Surname</th>
+                                                <th>Username</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var like in post.Likes)
+                                            {
+                                                var likedUser = users.FirstOrDefault(u => u.Id == like);
+                                                if (likedUser != null)
+                                                {
+                                                    <tr>
+                                                        <td>@likedUser.Jmeno</td>
+                                                        <td>@likedUser.Prijmeni</td>
+                                                        <td>@likedUser.UzivatelskeJmeno</td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <p>No likes yet.</p>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modální okno na Komenty-->
+                <div class="modal fade" id="myModal1" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalTitle">Comments</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (post.Comments != null && post.Comments.Any())
+                                {
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Surname</th>
+                                                <th>Username</th>
+                                                <th style="width: 50%;">Comment</th>
+                                                <th>Comment time</th>
+                                                <th>Edit comment</th>
+                                                <th>Delete comment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var commentId in post.Comments)
+                                            {
+                                                var comment = allComments.FirstOrDefault(c => c.Id == commentId);
+                                                if (comment != null) 
+                                                { 
+
+                                                    var commentUser = users.FirstOrDefault(u => u.Id == comment.UserId);
+                                                    if (commentUser != null)
+                                                    {
+                                                        <tr>
+                                                            <td>@commentUser.Jmeno</td>
+                                                            <td>@commentUser.Prijmeni</td>
+                                                            <td>@commentUser.UzivatelskeJmeno</td>
+                                                            <td style="white-space: pre-wrap;">@comment.Text</td>
+                                                            <td>@comment.Date</td>
+                                                            @if(@comment.UserId == @actualUserId){
+                                                                <td>
+                                                                    <form method="get" asp-action="Edit" asp-controller="Comments" class="d-inline-block me-2">
+                                                                        <input type="hidden" name="id" value="@comment.Id" />
+                                                                        @* <input type="hidden" name="postId" value="@post.Id" /> *@
+                                                                        <input type="hidden" name="userId" value="@user.Id" />
+                                                                        <button type="submit" class="btn btn-outline-info mb-3">Edit</button>
+                                                                    </form>
+                                                                </td>
+                                                                <td>
+                                                                    <form method="post" asp-action="Delete" asp-controller="Comments" class="d-inline-block me-2">
+                                                                        <input type="hidden" name="id" value="@comment.Id" />
+                                                                        <input type="hidden" name="postId" value="@post.Id" />
+                                                                        <input type="hidden" name="userId" value="@user.Id" />
+                                                                        <button type="submit" class="btn btn-outline-danger mb-3">Delete</button>
+                                                                    </form>
+                                                                </td>
+                                                            }
+                                                        </tr>
+                                                    }
+                                                }
+
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <p>No likes yet.</p>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <a href="@Url.Action("Create", "Comments", new { postId = post.Id, userId = post.UserId })" class="btn btn-outline-primary">Add comment</a>
+                                @* <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Add comment</button> *@
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modální okno na to kolik lidi sleduje uzivatele-->
+                <div class="modal fade" id="myModal2" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalTitle">People which following @user.UzivatelskeJmeno</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (user.Followed != null && user.Followed.Any())
+                                {
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Surname</th>
+                                                <th>Username</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var folloved in user.Followed)
+                                            {
+                                                var follovedUser = users.FirstOrDefault(u => u.Id == folloved);
+                                                if (follovedUser != null)
+                                                {
+                                                    <tr>
+                                                        <td>@follovedUser.Jmeno</td>
+                                                        <td>@follovedUser.Prijmeni</td>
+                                                        <td>@follovedUser.UzivatelskeJmeno</td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <p>No folloved.</p>
+                                }
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modální okno na to kolik lidi sleduje uzivatel-->
+                <div class="modal fade" id="myModal3" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="modalTitle">People followed by @user.UzivatelskeJmeno</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                @if (user.Following != null && user.Following.Any())
+                                {
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Surname</th>
+                                                <th>Username</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var folloved in user.Following)
+                                            {
+                                                var follovedUser = users.FirstOrDefault(u => u.Id == folloved);
+                                                if (follovedUser != null)
+                                                {
+                                                    <tr>
+                                                        <td>@follovedUser.Jmeno</td>
+                                                        <td>@follovedUser.Prijmeni</td>
+                                                        <td>@follovedUser.UzivatelskeJmeno</td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <p>No folloved.</p>
+                                } 
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p>No posts available.</p>
+        }
+    </div>
+</div>
